@@ -23,6 +23,8 @@ try:
 except ImportError:
     __version__ = get_version()
 
+
+from flask_cors import CORS
 from flask import (
     Flask, render_template, request, jsonify,
     send_file, session, redirect, url_for
@@ -38,6 +40,11 @@ from generate_copyright_docs import CopyrightDocGenerator
 # ============================================================
 
 应用 = Flask(__name__)
+
+# Vercel 部署需要顶级 app 变量
+app = 应用
+application = 应用
+CORS(应用)
 应用.secret_key = "copyright-application-secret-key-2026"
 应用.config["GENERATED_FOLDER"] = "generated"
 应用.config["UPLOAD_FOLDER"] = "uploads"
@@ -1148,8 +1155,7 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
   @page {{
     size: A4;
     margin: 2cm;
-    @top-center {{
-      content: "{标题}";
+    ";
       font-size: 9pt;
       color: #999;
     }}
@@ -1247,7 +1253,7 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
 </head>
 <body>
 {html内容}
-<footer style="text-align:center;padding:20px;color:#999;font-size:10px;border-top:1px solid #eee;margin-top:40px;">© 2026 云南意念科技有限公司 版权所有</footer>
+<footer style="text-align:right;padding:10px 20px;color:#999;font-size:9px;margin-top:40px;">© 2026 云南意念科技有限公司 版权所有</footer>
 </body>
 </html>"""
 
@@ -1420,20 +1426,56 @@ def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
         
         i += 1
     
-    # 添加页脚
+    # 添加页脚（右对齐，显示页码）
     from docx.oxml.ns import qn as ns_qn
     section = doc.sections[0]
+    section.different_first_page_header_footer = False
     footer = section.footer
     footer.is_linked_to_previous = False
-    fp = footer.paragraphs[0]
-    fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = fp.add_run("© 2026 云南意念科技有限公司 版权所有")
-    run.font.size = Pt(8)
-    run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
-    rPr = run._element.get_or_add_rPr()
-    rFonts = OxmlElement('w:rFonts')
-    rFonts.set(ns_qn('w:eastAsia'), '宋体')
-    rPr.insert(0, rFonts)
+    
+    # 清除现有页脚内容
+    for para in footer.paragraphs:
+        p_element = para._element
+        p_element.getparent().remove(p_element)
+    
+    # 添加页码（居中）
+    fp_page = footer.add_paragraph()
+    fp_page.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run_page = fp_page.add_run("第 ")
+    run_page.font.size = Pt(8)
+    run_page.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    rPr_page = run_page._element.get_or_add_rPr()
+    rFonts_page = OxmlElement('w:rFonts')
+    rFonts_page.set(ns_qn('w:eastAsia'), '宋体')
+    rPr_page.insert(0, rFonts_page)
+    
+    # 添加页码域
+    from docx.oxml import OxmlElement as InnerOxmlElement
+    fldChar1 = InnerOxmlElement('w:fldChar')
+    fldChar1.set(ns_qn('w:fldCharType'), 'begin')
+    instrText = InnerOxmlElement('w:instrText')
+    instrText.text = 'PAGE'
+    fldChar2 = InnerOxmlElement('w:fldChar')
+    fldChar2.set(ns_qn('w:fldCharType'), 'end')
+    
+    run_page._element.append(fldChar1)
+    run_page._element.append(instrText)
+    run_page._element.append(fldChar2)
+    
+    run_page2 = fp_page.add_run(" 页")
+    run_page2.font.size = Pt(8)
+    run_page2.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    
+    # 添加公司名称（右对齐）
+    fp_company = footer.add_paragraph()
+    fp_company.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    run_company = fp_company.add_run("© 2026 云南意念科技有限公司 版权所有")
+    run_company.font.size = Pt(8)
+    run_company.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    rPr_company = run_company._element.get_or_add_rPr()
+    rFonts_company = OxmlElement('w:rFonts')
+    rFonts_company.set(ns_qn('w:eastAsia'), '宋体')
+    rPr_company.insert(0, rFonts_company)
 
     doc.save(输出路径)
     return True
