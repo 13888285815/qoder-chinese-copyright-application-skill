@@ -424,6 +424,7 @@
 
             <button class="btn-import-template" onclick="importTemplate()">📥 导入新项目模板（云南意念科技）</button>
             <button class="btn-create" onclick="createProject()">🚀 创建项目并开始编辑</button>
+            <input type="file" id="projectFile" accept=".zip" style="display:none" onchange="handleFileUpload()">
         </div>
     </div>
 
@@ -521,50 +522,121 @@
          * 导入新项目模板
          */
         async function importTemplate() {
+            // 检查表单是否为空
+            const ownerName = document.getElementById('ownerName').value.trim();
+            const softwareName = document.getElementById('softwareName').value.trim();
+            
+            if (!ownerName && !softwareName) {
+                // 表单为空，导入默认模板
+                try {
+                    const response = await fetch('/api/template');
+                    const result = await response.json();
+                    
+                    if (!result.success) {
+                        showToast('导入模板失败', 'error');
+                        return;
+                    }
+
+                    const t = result.template;
+                    
+                    // 填充表单
+                    document.getElementById('ownerName').value = t.owner_name || '';
+                    document.getElementById('softwareName').value = t.software_name || '';
+                    document.getElementById('version').value = t.version || 'V2.0.0';
+                    document.getElementById('idNumber').value = t.id_number || '';
+                    document.getElementById('address').value = t.address || '';
+                    document.getElementById('contact').value = t.contact || '';
+                    document.getElementById('phone').value = t.phone || '';
+                    document.getElementById('zipCode').value = t.zip_code || t.postal_code || '650000';
+                    document.getElementById('email').value = t.email || 'zzx@yndxw.com';
+                    document.getElementById('industry').value = t.industry || '';
+                    document.getElementById('devPurpose').value = t.dev_purpose || '';
+                    document.getElementById('mainFunctions').value = t.main_functions || '';
+                    document.getElementById('techFeatures').value = t.tech_features || '';
+
+                    // 设置软件类型
+                    const softwareTypeSelect = document.getElementById('softwareType');
+                    for (let i = 0; i < softwareTypeSelect.options.length; i++) {
+                        if (softwareTypeSelect.options[i].value === t.software_type) {
+                            softwareTypeSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
+
+                    showToast('✅ 模板导入成功！请检查并修改表单内容', 'success');
+                } catch (error) {
+                    console.error('导入模板失败：', error);
+                    showToast('网络错误，请重试', 'error');
+                }
+            } else {
+                // 表单不为空，打开文件选择器导入项目
+                document.getElementById('projectFile').click();
+            }
+        }
+
+        /**
+         * 处理项目文件上传（ZIP格式）
+         */
+        async function handleFileUpload() {
+            const fileInput = document.getElementById('projectFile');
+            if (!fileInput.files || fileInput.files.length === 0) {
+                return;
+            }
+            
+            const file = fileInput.files[0];
+            if (!file.name.endsWith('.zip')) {
+                showToast('仅支持ZIP格式压缩包', 'error');
+                fileInput.value = '';
+                return;
+            }
+            
+            // 显示加载动画
+            document.getElementById('loading').style.display = 'flex';
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            // 附加当前表单数据（作为新项目的著作权人信息）
+            formData.append('owner_name', document.getElementById('ownerName').value);
+            formData.append('id_type', document.getElementById('idType').value);
+            formData.append('id_number', document.getElementById('idNumber').value);
+            formData.append('address', document.getElementById('address').value);
+            formData.append('zip_code', document.getElementById('zipCode').value);
+            formData.append('contact', document.getElementById('contact').value);
+            formData.append('phone', document.getElementById('phone').value);
+            formData.append('email', document.getElementById('email').value);
+            formData.append('dev_purpose', document.getElementById('devPurpose').value);
+            formData.append('industry', document.getElementById('industry').value);
+            formData.append('main_functions', document.getElementById('mainFunctions').value);
+            formData.append('tech_features', document.getElementById('techFeatures').value);
+            
             try {
-                const response = await fetch('/api/template');
+                const response = await fetch('/api/projects/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
                 const result = await response.json();
                 
-                if (!result.success) {
-                    showToast('导入模板失败', 'error');
-                    return;
+                if (result.success) {
+                    showToast('✅ 项目导入成功！正在跳转到编辑器...', 'success');
+                    setTimeout(() => {
+                        window.location.href = `/editor/${result.project_id}`;
+                    }, 1000);
+                } else {
+                    showToast('项目导入失败：' + result.message, 'error');
                 }
-
-                const t = result.template;
-                
-                // 填充表单
-                document.getElementById('ownerName').value = t.owner_name || '';
-                document.getElementById('softwareName').value = t.software_name || '';
-                document.getElementById('version').value = t.version || 'V2.0.0';
-                document.getElementById('idNumber').value = t.id_number || '';
-                document.getElementById('address').value = t.address || '';
-                document.getElementById('contact').value = t.contact || '';
-                document.getElementById('phone').value = t.phone || '';
-                document.getElementById('zipCode').value = t.zip_code || t.postal_code || '650000';
-                document.getElementById('email').value = t.email || 'zzx@yndxw.com';
-                document.getElementById('industry').value = t.industry || '';
-                document.getElementById('devPurpose').value = t.dev_purpose || '';
-                document.getElementById('mainFunctions').value = t.main_functions || '';
-                document.getElementById('techFeatures').value = t.tech_features || '';
-
-                // 设置软件类型
-                const softwareTypeSelect = document.getElementById('softwareType');
-                for (let i = 0; i < softwareTypeSelect.options.length; i++) {
-                    if (softwareTypeSelect.options[i].value === t.software_type) {
-                        softwareTypeSelect.selectedIndex = i;
-                        break;
-                    }
-                }
-
-                showToast('✅ 模板导入成功！请检查并修改表单内容', 'success');
             } catch (error) {
-                console.error('导入模板失败：', error);
+                console.error('项目导入失败：', error);
                 showToast('网络错误，请重试', 'error');
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                fileInput.value = '';
             }
         }
     </script>
     <footer style="text-align:center;padding:20px;color:#999;font-size:12px;border-top:1px solid #eee;margin-top:40px;">
-        <p>© 2026 云南意念科技有限公司 | tools.yndxw.com | zzx@yndxw.com</p>
+        <p>© 2026 云南意念科技有限公司 版权所有</p>
         <p>滇ICP备16007314号-1</p>
     </footer>
 </body>
