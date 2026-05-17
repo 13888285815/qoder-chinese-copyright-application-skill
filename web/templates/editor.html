@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>文档编辑器 - 软件著作权申请材料生成系统</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -556,6 +557,7 @@
                     <button class="btn btn-secondary" onclick="saveDocument()">💾 保存</button>
                     <div class="toolbar-separator"></div>
                     <button class="btn btn-secondary" onclick="showSaveAsModal()">📥 另存为</button>
+                    <button class="btn btn-secondary" onclick="exportSelectedFiles()">📦 按所选导出</button>
                     <button class="btn btn-primary" onclick="showExportModal()">📤 导出</button>
                     <button class="btn btn-secondary" onclick="previewDocument()">👁️ 预览</button>
                     <button class="btn btn-success" onclick="showShareModal()">🔗 分享</button>
@@ -1087,6 +1089,44 @@ ${markdownToHtml(content)}
                 console.error('导出失败：', error);
                 showToast('导出失败，请重试', 'error');
             }
+        }
+
+        /**
+         * 按所选文件导出（勾选后打包下载）
+         */
+        async function exportSelectedFiles() {
+            if (selectedFiles.size === 0) {
+                showToast('请先勾选要导出的文件', 'error');
+                return;
+            }
+            showToast('正在打包所选文件...', 'info');
+            const zip = new JSZip();
+            const fetchPromises = [];
+            selectedFiles.forEach(filename => {
+                fetchPromises.push(
+                    fetch(`/api/projects/${projectId}/documents/${filename}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            if (data.success) {
+                                // 替换文件名：.md→.md，保留中文显示名
+                                const displayName = 显示名映射.get(filename, filename);
+                                zip.file(displayName, data.content);
+                            }
+                        })
+                        .catch(err => console.error('获取文件失败:', filename, err))
+                );
+            });
+            await Promise.all(fetchPromises);
+            const blob = await zip.generateAsync({ type: 'blob' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '选中的文档_' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '.zip';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showToast(`已导出 ${selectedFiles.size} 个文件`, 'success');
         }
 
         /**
