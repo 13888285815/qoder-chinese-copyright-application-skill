@@ -1,13 +1,9 @@
 {
   "version": 2,
-  "name": "qoder-chinese-copyright-application-skill",
   "builds": [
     {
       "src": "web/app.py",
-      "use": "@vercel/python",
-      "config": {
-        "maxLambdaSize": "50mb"
-      }
+      "use": "@vercel/python"
     }
   ],
   "routes": [
@@ -15,9 +11,5 @@
       "src": "/(.*)",
       "dest": "web/app.py"
     }
-  ],
-  "env": {
-    "FLASK_ENV": "production",
-    "PYTHONPATH": "./web:./scripts"
-  }
+  ]
 }
