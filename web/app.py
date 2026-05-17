@@ -90,6 +90,21 @@ def 保存项目数据(项目编号: str, 数据: dict):
 # 页面路由
 # ============================================================
 
+
+@应用.route("/api/debug-module")
+def 调试模块状态():
+    """调试端点：检查模块内函数是否可访问"""
+    import __main__
+    main = __main__
+    # 检查全局作用域
+    return jsonify({
+        "has_md转docx": hasattr(main, "md转docx"),
+        "has_批量转换项目文档": hasattr(main, "批量转换项目文档"),
+        "has_显示名映射": hasattr(main, "显示名映射"),
+        "has_显示名映射_local": "显示名映射" in dir(),
+        "模块名": type(main).__name__,
+    })
+
 @应用.route("/")
 def 首页():
     """渲染首页"""
@@ -503,7 +518,12 @@ def 导出PDF(project_id):
     中文名 = 显示名映射.get(目标文件, 目标文件)
     pdf路径 = os.path.join(项目目录, 中文名.replace('.md', '.pdf'))
     
-    if md转pdf(md内容, 标题, pdf路径):
+    # 使用globals()显式获取函数，避免命名空间问题
+    md转pdf_func = globals().get('md转pdf')
+    if not md转pdf_func:
+        return jsonify({"success": False, "message": "PDF生成功能未加载，请重启服务"})
+    
+    if md转pdf_func(md内容, 标题, pdf路径):
         下载名 = 中文名.replace('.md', '.pdf')
         return jsonify({
             "success": True,
@@ -581,7 +601,20 @@ def 导出全部格式(project_id):
                 允许格式.append(".docx")
             if ext in 允许格式:
                 file_path = os.path.join(项目目录, file)
-                中文名 = 显示名映射.get(file, file)
+                # 策略：
+                # 1. 如果文件名已经是中文（Unicode范围），直接用
+                # 2. 否则去掉扩展名后在映射表中查找对应MD文件名的中文名，再加回扩展名
+                基本名 = os.path.splitext(file)[0]
+                扩展名 = ext
+                if ord(基本名[0]) > 0x4e00:  # 已是中文名
+                    中文名 = 基本名 + 扩展名
+                else:
+                    # 英文名，查找映射表（key为.md文件名），找到后取中文名再加扩展名
+                    中文名 = 基本名 + 扩展名  # 默认用原名
+                    for md_key, 中文名映射 in 显示名映射.items():
+                        if 基本名 == os.path.splitext(md_key)[0]:
+                            中文名 = os.path.splitext(中文名映射)[0] + 扩展名
+                            break
                 zf.write(file_path, 中文名)
 
     return jsonify({
@@ -869,7 +902,6 @@ def 从表单生成文档(项目编号: str, 数据: dict):
 - **著作权人**：{著作权人}
 - **联系电话**：{电话}
 - **电子邮箱**：{邮箱}
-- **官方网站**：tools.yndxw.com
 - **当前版本**：{版本号}
 - **更新日期**：{当前日期}
 """
@@ -1092,19 +1124,6 @@ def 从表单生成文档(项目编号: str, 数据: dict):
 # 启动服务器
 # ============================================================
 
-if __name__ == "__main__":
-    print("=" * 60)
-    print("  软件著作权申请材料生成系统")
-    print("=" * 60)
-    print("  访问地址：http://localhost:5002")
-    print("  功能说明：")
-    print("    - 表单填写生成文档")
-    print("    - 上传源码自动分析")
-    print("    - 在线编辑与导出")
-    print("=" * 60)
-    应用.run(debug=False, use_reloader=False, host="0.0.0.0", port=5002, threaded=True)
-
-
 # ============================================================
 # 文档格式转换工具
 # ============================================================
@@ -1228,7 +1247,7 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
 </head>
 <body>
 {html内容}
-<footer style="text-align:center;padding:20px;color:#999;font-size:10px;border-top:1px solid #eee;margin-top:40px;">© 2026 云南意念科技有限公司 | tools.yndxw.com | zzx@yndxw.com | 滇ICP备16007314号-1</footer>
+<footer style="text-align:center;padding:20px;color:#999;font-size:10px;border-top:1px solid #eee;margin-top:40px;">© 2026 云南意念科技有限公司 版权所有</footer>
 </body>
 </html>"""
 
@@ -1408,7 +1427,7 @@ def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
     footer.is_linked_to_previous = False
     fp = footer.paragraphs[0]
     fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run = fp.add_run("© 2026 云南意念科技有限公司 | tools.yndxw.com | zzx@yndxw.com | 滇ICP备16007314号-1")
+    run = fp.add_run("© 2026 云南意念科技有限公司 版权所有")
     run.font.size = Pt(8)
     run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
     rPr = run._element.get_or_add_rPr()
@@ -1451,3 +1470,18 @@ def 批量转换项目文档(project_id: str, 项目目录: str):
             结果["docx"].append(中文名.replace('.md', '.docx'))
     
     return 结果
+
+if __name__ == "__main__":
+    print("=" * 60)
+    print("  软件著作权申请材料生成系统")
+    print("=" * 60)
+    print("  访问地址：http://localhost:5002")
+    print("  功能说明：")
+    print("    - 表单填写生成文档")
+    print("    - 上传源码自动分析")
+    print("    - 在线编辑与导出")
+    print("=" * 60)
+    应用.run(debug=False, use_reloader=False, host="0.0.0.0", port=5002, threaded=False)
+
+
+
