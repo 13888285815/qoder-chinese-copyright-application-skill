@@ -45,6 +45,11 @@ from generate_copyright_docs import CopyrightDocGenerator
 # ============================================================
 
 应用 = Flask(__name__)
+
+# Vercel 部署需要顶级 app 变量
+app = 应用
+application = 应用
+
 应用.secret_key = "copyright-application-secret-key-2026"
 应用.config["GENERATED_FOLDER"] = "generated"
 应用.config["UPLOAD_FOLDER"] = "uploads"
