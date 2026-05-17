@@ -866,10 +866,11 @@ class CopyrightDocGenerator:
             f.write("## 第五章 技术支持\n\n")
             f.write("### 5.1 联系方式\n\n")
             f.write(
-                f"- **开发者**：{self.project_info.get('author', '（请填写）')}  \n"
+                f"- **著作权人**：{owner_info.get('name', '云南意念科技有限公司')}  \n"
             )
-            f.write("- **技术支持邮箱**：（请填写）  \n")
-            f.write("- **官方网站**：（请填写）  \n\n")
+            f.write("- **官方网站**：tools.yndxw.com  \n")
+            f.write("- **技术支持邮箱**：zzx@yndxw.com  \n")
+            f.write("- **备案号**：滇ICP备16007314号-1  \n\n")
 
             f.write("### 5.2 版本更新\n\n")
             f.write(f"- **当前版本**：{self.project_info['version']}  \n")

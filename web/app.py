@@ -496,10 +496,13 @@ def 导出PDF(project_id):
 
     first_line = md内容.split('\n')[0]
     标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else 目标文件.replace('.md', '')
-    pdf路径 = md路径.replace(".md", ".pdf")
-
+    
+    # 使用中文文件名
+    中文名 = 显示名映射.get(目标文件, 目标文件)
+    pdf路径 = os.path.join(项目目录, 中文名.replace('.md', '.pdf'))
+    
     if md转pdf(md内容, 标题, pdf路径):
-        下载名 = 目标文件.replace(".md", ".pdf")
+        下载名 = 中文名.replace('.md', '.pdf')
         return jsonify({
             "success": True,
             "message": "PDF生成成功",
@@ -534,10 +537,13 @@ def 导出DOCX(project_id):
 
     first_line = md内容.split('\n')[0]
     标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else 目标文件.replace('.md', '')
-    docx路径 = md路径.replace(".md", ".docx")
-
+    
+    # 使用中文文件名
+    中文名 = 显示名映射.get(目标文件, 目标文件)
+    docx路径 = os.path.join(项目目录, 中文名.replace('.md', '.docx'))
+    
     if md转docx(md内容, 标题, docx路径):
-        下载名 = 目标文件.replace(".md", ".docx")
+        下载名 = 中文名.replace('.md', '.docx')
         return jsonify({
             "success": True,
             "message": "Word文档生成成功",
@@ -591,7 +597,15 @@ def 下载PDF(project_id, filename):
     pdf路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(".md", ".pdf")
     if not os.path.exists(pdf路径):
         return jsonify({"success": False, "message": "PDF文件不存在"}), 404
-    return send_file(pdf路径, as_attachment=True, download_name=filename)
+    
+    # 使用中文下载名
+    中文名 = filename
+    if filename in 显示名映射:
+        中文名 = 显示名映射[filename].replace(".md", ".pdf")
+    elif filename.endswith(".pdf"):
+        中文名 = filename  # 已经是中文名
+    
+    return send_file(pdf路径, as_attachment=True, download_name=中文名)
 
 
 @应用.route("/api/download-docx/<project_id>/<filename>", methods=["GET"])
@@ -600,7 +614,15 @@ def 下载DOCX(project_id, filename):
     docx路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(".md", ".docx")
     if not os.path.exists(docx路径):
         return jsonify({"success": False, "message": "Word文件不存在"}), 404
-    return send_file(docx路径, as_attachment=True, download_name=filename)
+    
+    # 使用中文下载名
+    中文名 = filename
+    if filename in 显示名映射:
+        中文名 = 显示名映射[filename].replace(".md", ".docx")
+    elif filename.endswith(".docx"):
+        中文名 = filename  # 已经是中文名
+    
+    return send_file(docx路径, as_attachment=True, download_name=中文名)
 
 
 
@@ -845,6 +867,7 @@ def 从表单生成文档(项目编号: str, 数据: dict):
 - **著作权人**：{著作权人}
 - **联系电话**：{电话}
 - **电子邮箱**：{邮箱}
+- **官方网站**：tools.yndxw.com
 - **当前版本**：{版本号}
 - **更新日期**：{当前日期}
 """
@@ -1203,6 +1226,7 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
 </head>
 <body>
 {html内容}
+<footer style="text-align:center;padding:20px;color:#999;font-size:10px;border-top:1px solid #eee;margin-top:40px;">© 2026 云南意念科技有限公司 | tools.yndxw.com | zzx@yndxw.com | 滇ICP备16007314号-1</footer>
 </body>
 </html>"""
 
@@ -1375,12 +1399,27 @@ def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
         
         i += 1
     
+    # 添加页脚
+    from docx.oxml.ns import qn as ns_qn
+    section = doc.sections[0]
+    footer = section.footer
+    footer.is_linked_to_previous = False
+    fp = footer.paragraphs[0]
+    fp.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = fp.add_run("© 2026 云南意念科技有限公司 | tools.yndxw.com | zzx@yndxw.com | 滇ICP备16007314号-1")
+    run.font.size = Pt(8)
+    run.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    rPr = run._element.get_or_add_rPr()
+    rFonts = OxmlElement('w:rFonts')
+    rFonts.set(ns_qn('w:eastAsia'), '宋体')
+    rPr.insert(0, rFonts)
+
     doc.save(输出路径)
     return True
 
 
 def 批量转换项目文档(project_id: str, 项目目录: str):
-    """将项目所有markdown文档转换为pdf和docx"""
+    """将项目所有markdown文档转换为pdf和docx，使用中文文件名"""
     import os
     结果 = {"pdf": [], "docx": []}
     
@@ -1396,14 +1435,17 @@ def 批量转换项目文档(project_id: str, 项目目录: str):
         first_line = md内容.split('\n')[0] if md内容 else file
         标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else file.replace('.md', '')
         
+        # 中文文件名
+        中文名 = 显示名映射.get(file, file)
+        
         # PDF
-        pdf路径 = md路径.replace('.md', '.pdf')
+        pdf路径 = os.path.join(项目目录, 中文名.replace('.md', '.pdf'))
         if md转pdf(md内容, 标题, pdf路径):
-            结果["pdf"].append(os.path.basename(pdf路径))
+            结果["pdf"].append(中文名.replace('.md', '.pdf'))
         
         # Word
-        docx路径 = md路径.replace('.md', '.docx')
+        docx路径 = os.path.join(项目目录, 中文名.replace('.md', '.docx'))
         if md转docx(md内容, 标题, docx路径):
-            结果["docx"].append(os.path.basename(docx路径))
+            结果["docx"].append(中文名.replace('.md', '.docx'))
     
     return 结果
