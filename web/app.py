@@ -19,15 +19,20 @@ from werkzeug.utils import secure_filename
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 try:
     from version import get_version as _get_ver
+
     __version__ = _get_ver()
 except ImportError:
     __version__ = get_version()
 
-
-from flask_cors import CORS
 from flask import (
-    Flask, render_template, request, jsonify,
-    send_file, session, redirect, url_for
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    send_file,
+    session,
+    redirect,
+    url_for,
 )
 
 # 将上级目录加入模块搜索路径，以便导入生成器
@@ -40,11 +45,6 @@ from generate_copyright_docs import CopyrightDocGenerator
 # ============================================================
 
 应用 = Flask(__name__)
-
-# Vercel 部署需要顶级 app 变量
-app = 应用
-application = 应用
-CORS(应用)
 应用.secret_key = "copyright-application-secret-key-2026"
 应用.config["GENERATED_FOLDER"] = "generated"
 应用.config["UPLOAD_FOLDER"] = "uploads"
@@ -52,12 +52,37 @@ CORS(应用)
 
 # 允许上传的文件扩展名
 允许的扩展名 = {
-    ".js", ".ts", ".jsx", ".tsx", ".vue",
-    ".py", ".java", ".go", ".rs", ".c", ".cpp", ".h", ".hpp",
-    ".json", ".wxml", ".wxss", ".html", ".css", ".scss", ".less",
-    ".md", ".txt", ".yaml", ".yml", ".toml",
-    ".sh", ".bat", ".sql",
-    ".xml", ".gradle", ".properties",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".vue",
+    ".py",
+    ".java",
+    ".go",
+    ".rs",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".json",
+    ".wxml",
+    ".wxss",
+    ".html",
+    ".css",
+    ".scss",
+    ".less",
+    ".md",
+    ".txt",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".sh",
+    ".bat",
+    ".sql",
+    ".xml",
+    ".gradle",
+    ".properties",
 }
 
 # 确保目录存在
@@ -102,15 +127,19 @@ def 保存项目数据(项目编号: str, 数据: dict):
 def 调试模块状态():
     """调试端点：检查模块内函数是否可访问"""
     import __main__
+
     main = __main__
     # 检查全局作用域
-    return jsonify({
-        "has_md转docx": hasattr(main, "md转docx"),
-        "has_批量转换项目文档": hasattr(main, "批量转换项目文档"),
-        "has_显示名映射": hasattr(main, "显示名映射"),
-        "has_显示名映射_local": "显示名映射" in dir(),
-        "模块名": type(main).__name__,
-    })
+    return jsonify(
+        {
+            "has_md转docx": hasattr(main, "md转docx"),
+            "has_批量转换项目文档": hasattr(main, "批量转换项目文档"),
+            "has_显示名映射": hasattr(main, "显示名映射"),
+            "has_显示名映射_local": "显示名映射" in dir(),
+            "模块名": type(main).__name__,
+        }
+    )
+
 
 @应用.route("/")
 def 首页():
@@ -128,6 +157,7 @@ def 编辑器(project_id):
 # 项目管理接口
 # ============================================================
 
+
 @应用.route("/api/projects", methods=["GET"])
 def 获取项目列表():
     """获取所有项目列表"""
@@ -144,14 +174,16 @@ def 获取项目列表():
 
         数据 = 读取项目数据(project_id)
         if 数据:
-            项目列表.append({
-                "id": 项目编号,
-                "name": 数据.get("software_name", "未命名项目"),
-                "owner": 数据.get("owner_name", ""),
-                "type": 数据.get("software_type", ""),
-                "created_at": 数据.get("created_at", ""),
-                "updated_at": 数据.get("updated_at", ""),
-            })
+            项目列表.append(
+                {
+                    "id": 项目编号,
+                    "name": 数据.get("software_name", "未命名项目"),
+                    "owner": 数据.get("owner_name", ""),
+                    "type": 数据.get("software_type", ""),
+                    "created_at": 数据.get("created_at", ""),
+                    "updated_at": 数据.get("updated_at", ""),
+                }
+            )
 
     # 按更新时间倒序排列
     项目列表.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
@@ -179,11 +211,7 @@ def 创建项目():
     # 使用表单信息生成文档
     从表单生成文档(项目编号, 数据)
 
-    return jsonify({
-        "success": True,
-        "project_id": 项目编号,
-        "message": "项目创建成功"
-    })
+    return jsonify({"success": True, "project_id": 项目编号, "message": "项目创建成功"})
 
 
 @应用.route("/api/template", methods=["GET"])
@@ -191,26 +219,28 @@ def 获取模板():
     """
     获取新项目模板（云南意念科技默认值）
     """
-    return jsonify({
-        "success": True,
-        "template": {
-            "owner_name": "云南意念科技有限公司",
-            "software_name": "意念ERP",
-            "id_type": "营业执照",
-            "id_number": "530111197702274437",
-            "address": "云南省昆明市人民西路220号云南软件园",
-            "contact": "郑志雄",
-            "phone": "13888285815",
-            "postal_code": "650000",
-            "email": "zzx@yndxw.com",
-            "software_type": "Web应用",
-            "industry": "全行业",
-            "version": "V2.0.0",
-            "dev_purpose": "该项目由云南意念科技开发，旨在打造一款轻量化、易上手的云端 ERP 系统，解决中小企业传统系统成本高、部署难、操作复杂的痛点。面向小微企业与初创团队，提供低成本、免部署的数字化管理方案，助力企业快速实现进销存、财务、客户等核心业务线上化，高效完成基础数字化转型。",
-            "main_functions": "意念ERP是一款轻量化开源企业资源管理系统，项目部署于静态网页平台，界面简洁清爽，操作门槛低。系统聚焦中小企业日常经营管理需求，整合采购、销售、库存、账务、客户管理等核心业务模块，实现业务数据一体化统筹。该项目适配多端浏览使用，摒弃传统 ERP 臃肿复杂的架构，主打高效实用、快速上手。可满足小微企业进销存统计、订单流程跟进、货品出入库登记、简易财务对账等基础办公需求，无需复杂部署即可投入使用。适合初创团队、个体商户用于日常业务数字化管理，兼具实用性与拓展性，是低成本实现企业基础数字化转型的优质轻量管理工具。",
-            "tech_features": "意念ERP是云南意念科技 2026 年推出的云端轻量化 ERP 系统。采用前后端分离架构，基于静态网页部署，免本地安装、浏览器直接访问。提供开箱即用演示账号，上手零门槛。系统架构简洁高效，适配中小企业，支持快速二次开发与功能拓展，兼顾易用性与可定制性。",
+    return jsonify(
+        {
+            "success": True,
+            "template": {
+                "owner_name": "云南意念科技有限公司",
+                "software_name": "意念ERP",
+                "id_type": "营业执照",
+                "id_number": "530111197702274437",
+                "address": "云南省昆明市人民西路220号云南软件园",
+                "contact": "郑志雄",
+                "phone": "13888285815",
+                "postal_code": "650000",
+                "email": "zzx@yndxw.com",
+                "software_type": "Web应用",
+                "industry": "全行业",
+                "version": "V2.0.0",
+                "dev_purpose": "该项目由云南意念科技开发，旨在打造一款轻量化、易上手的云端 ERP 系统，解决中小企业传统系统成本高、部署难、操作复杂的痛点。面向小微企业与初创团队，提供低成本、免部署的数字化管理方案，助力企业快速实现进销存、财务、客户等核心业务线上化，高效完成基础数字化转型。",
+                "main_functions": "意念ERP是一款轻量化开源企业资源管理系统，项目部署于静态网页平台，界面简洁清爽，操作门槛低。系统聚焦中小企业日常经营管理需求，整合采购、销售、库存、账务、客户管理等核心业务模块，实现业务数据一体化统筹。该项目适配多端浏览使用，摒弃传统 ERP 臃肿复杂的架构，主打高效实用、快速上手。可满足小微企业进销存统计、订单流程跟进、货品出入库登记、简易财务对账等基础办公需求，无需复杂部署即可投入使用。适合初创团队、个体商户用于日常业务数字化管理，兼具实用性与拓展性，是低成本实现企业基础数字化转型的优质轻量管理工具。",
+                "tech_features": "意念ERP是云南意念科技 2026 年推出的云端轻量化 ERP 系统。采用前后端分离架构，基于静态网页部署，免本地安装、浏览器直接访问。提供开箱即用演示账号，上手零门槛。系统架构简洁高效，适配中小企业，支持快速二次开发与功能拓展，兼顾易用性与可定制性。",
+            },
         }
-    })
+    )
 
 
 @应用.route("/api/projects/<project_id>", methods=["GET"])
@@ -342,18 +372,20 @@ def 上传项目分析():
         # 清理临时目录
         shutil.rmtree(临时目录, ignore_errors=True)
 
-        return jsonify({
-            "success": True,
-            "project_id": 项目编号,
-            "project_info": {
-                "name": 项目信息.get("name", ""),
-                "type": 项目信息.get("type", ""),
-                "code_lines": 生成器.total_lines,
-                "code_files": len(生成器.code_files),
-                "tech_stack": 项目信息.get("tech_stack", []),
-            },
-            "message": "项目分析完成"
-        })
+        return jsonify(
+            {
+                "success": True,
+                "project_id": 项目编号,
+                "project_info": {
+                    "name": 项目信息.get("name", ""),
+                    "type": 项目信息.get("type", ""),
+                    "code_lines": 生成器.total_lines,
+                    "code_files": len(生成器.code_files),
+                    "tech_stack": 项目信息.get("tech_stack", []),
+                },
+                "message": "项目分析完成",
+            }
+        )
 
     except Exception as e:
         # 清理临时目录
@@ -397,15 +429,17 @@ def 获取文档列表(project_id):
             continue
 
         显示名 = 显示名映射.get(文件名, 文件名)
-        文档列表.append({
-            "name": 显示名,
-            "filename": 文件名,
-            "content": 内容,
-            "size": len(内容),
-            "modified": datetime.fromtimestamp(
-                os.path.getmtime(文件路径)
-            ).strftime("%Y-%m-%d %H:%M:%S"),
-        })
+        文档列表.append(
+            {
+                "name": 显示名,
+                "filename": 文件名,
+                "content": 内容,
+                "size": len(内容),
+                "modified": datetime.fromtimestamp(os.path.getmtime(文件路径)).strftime(
+                    "%Y-%m-%d %H:%M:%S"
+                ),
+            }
+        )
 
     return jsonify({"success": True, "documents": 文档列表})
 
@@ -456,6 +490,7 @@ def 更新文档内容(project_id, filename):
 # 导出接口
 # ============================================================
 
+
 @应用.route("/api/projects/<project_id>/export", methods=["POST"])
 def 导出项目(project_id):
     """将项目文档打包为zip导出"""
@@ -477,11 +512,13 @@ def 导出项目(project_id):
                 zf.write(文件路径, 压缩名)
 
     下载名 = f"软件著作权申请材料-{project_id[:8]}.zip"
-    return jsonify({
-        "success": True,
-        "download_url": f"/api/download/{压缩文件名}",
-        "download_name": 下载名,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "download_url": f"/api/download/{压缩文件名}",
+            "download_name": 下载名,
+        }
+    )
 
 
 @应用.route("/api/download/<filename>", methods=["GET"])
@@ -515,30 +552,41 @@ def 导出PDF(project_id):
     if not os.path.exists(md路径):
         return jsonify({"success": False, "message": "文档不存在"}), 404
 
-    with open(md路径, 'r', encoding='utf-8') as f:
+    with open(md路径, "r", encoding="utf-8") as f:
         md内容 = f.read()
 
-    first_line = md内容.split('\n')[0]
-    标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else 目标文件.replace('.md', '')
-    
+    first_line = md内容.split("\n")[0]
+    标题 = (
+        first_line.lstrip("# ").strip()
+        if first_line.startswith("#")
+        else 目标文件.replace(".md", "")
+    )
+
     # 使用中文文件名
     中文名 = 显示名映射.get(目标文件, 目标文件)
-    pdf路径 = os.path.join(项目目录, 中文名.replace('.md', '.pdf'))
-    
+    pdf路径 = os.path.join(项目目录, 中文名.replace(".md", ".pdf"))
+
     # 使用globals()显式获取函数，避免命名空间问题
-    md转pdf_func = globals().get('md转pdf')
+    md转pdf_func = globals().get("md转pdf")
     if not md转pdf_func:
         return jsonify({"success": False, "message": "PDF生成功能未加载，请重启服务"})
-    
+
     if md转pdf_func(md内容, 标题, pdf路径):
-        下载名 = 中文名.replace('.md', '.pdf')
-        return jsonify({
-            "success": True,
-            "message": "PDF生成成功",
-            "pdf_url": f"/api/download-pdf/{project_id}/{urllib.parse.quote(下载名)}",
-        })
+        下载名 = 中文名.replace(".md", ".pdf")
+        return jsonify(
+            {
+                "success": True,
+                "message": "PDF生成成功",
+                "pdf_url": f"/api/download-pdf/{project_id}/{urllib.parse.quote(下载名)}",
+            }
+        )
     else:
-        return jsonify({"success": False, "message": "PDF生成失败：未安装PDF转换工具。请安装weasyprint（需GTK库）或pandoc/wkhtmltopdf后重试。"})
+        return jsonify(
+            {
+                "success": False,
+                "message": "PDF生成失败：未安装PDF转换工具。请安装weasyprint（需GTK库）或pandoc/wkhtmltopdf后重试。",
+            }
+        )
 
 
 @应用.route("/api/projects/<project_id>/export-docx", methods=["POST"])
@@ -561,23 +609,29 @@ def 导出DOCX(project_id):
     if not os.path.exists(md路径):
         return jsonify({"success": False, "message": "文档不存在"}), 404
 
-    with open(md路径, 'r', encoding='utf-8') as f:
+    with open(md路径, "r", encoding="utf-8") as f:
         md内容 = f.read()
 
-    first_line = md内容.split('\n')[0]
-    标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else 目标文件.replace('.md', '')
-    
+    first_line = md内容.split("\n")[0]
+    标题 = (
+        first_line.lstrip("# ").strip()
+        if first_line.startswith("#")
+        else 目标文件.replace(".md", "")
+    )
+
     # 使用中文文件名
     中文名 = 显示名映射.get(目标文件, 目标文件)
-    docx路径 = os.path.join(项目目录, 中文名.replace('.md', '.docx'))
-    
+    docx路径 = os.path.join(项目目录, 中文名.replace(".md", ".docx"))
+
     if md转docx(md内容, 标题, docx路径):
-        下载名 = 中文名.replace('.md', '.docx')
-        return jsonify({
-            "success": True,
-            "message": "Word文档生成成功",
-            "docx_url": f"/api/download-docx/{project_id}/{urllib.parse.quote(下载名)}",
-        })
+        下载名 = 中文名.replace(".md", ".docx")
+        return jsonify(
+            {
+                "success": True,
+                "message": "Word文档生成成功",
+                "docx_url": f"/api/download-docx/{project_id}/{urllib.parse.quote(下载名)}",
+            }
+        )
     else:
         return jsonify({"success": False, "message": "Word文档生成失败"})
 
@@ -595,6 +649,7 @@ def 导出全部格式(project_id):
     转换结果 = 批量转换项目文档(project_id, 项目目录)
 
     import time
+
     zip名 = f"copyright-all-{project_id[:8]}-{int(time.time())}.zip"
     zip路径 = os.path.join(应用.config["GENERATED_FOLDER"], zip名)
 
@@ -613,7 +668,7 @@ def 导出全部格式(project_id):
                 # 2. 否则去掉扩展名后在映射表中查找对应MD文件名的中文名，再加回扩展名
                 基本名 = os.path.splitext(file)[0]
                 扩展名 = ext
-                if ord(基本名[0]) > 0x4e00:  # 已是中文名
+                if ord(基本名[0]) > 0x4E00:  # 已是中文名
                     中文名 = 基本名 + 扩展名
                 else:
                     # 英文名，查找映射表（key为.md文件名），找到后取中文名再加扩展名
@@ -624,13 +679,15 @@ def 导出全部格式(project_id):
                             break
                 zf.write(file_path, 中文名)
 
-    return jsonify({
-        "success": True,
-        "message": "批量转换完成",
-        "download_url": f"/api/download/{zip名}",
-        "download_name": f"软件著作权申请材料-全格式.zip",
-        "converted": 转换结果,
-    })
+    return jsonify(
+        {
+            "success": True,
+            "message": "批量转换完成",
+            "download_url": f"/api/download/{zip名}",
+            "download_name": f"软件著作权申请材料-全格式.zip",
+            "converted": 转换结果,
+        }
+    )
 
 
 @应用.route("/api/download-pdf/<project_id>/<filename>", methods=["GET"])
@@ -639,39 +696,40 @@ def 下载PDF(project_id, filename):
     pdf路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(".md", ".pdf")
     if not os.path.exists(pdf路径):
         return jsonify({"success": False, "message": "PDF文件不存在"}), 404
-    
+
     # 使用中文下载名
     中文名 = filename
     if filename in 显示名映射:
         中文名 = 显示名映射[filename].replace(".md", ".pdf")
     elif filename.endswith(".pdf"):
         中文名 = filename  # 已经是中文名
-    
+
     return send_file(pdf路径, as_attachment=True, download_name=中文名)
 
 
 @应用.route("/api/download-docx/<project_id>/<filename>", methods=["GET"])
 def 下载DOCX(project_id, filename):
     实际文件名 = filename.replace(".docx", ".md")
-    docx路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(".md", ".docx")
+    docx路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(
+        ".md", ".docx"
+    )
     if not os.path.exists(docx路径):
         return jsonify({"success": False, "message": "Word文件不存在"}), 404
-    
+
     # 使用中文下载名
     中文名 = filename
     if filename in 显示名映射:
         中文名 = 显示名映射[filename].replace(".md", ".docx")
     elif filename.endswith(".docx"):
         中文名 = filename  # 已经是中文名
-    
+
     return send_file(docx路径, as_attachment=True, download_name=中文名)
-
-
 
 
 # ============================================================
 # 分享接口
 # ============================================================
+
 
 @应用.route("/api/projects/<project_id>/share", methods=["POST"])
 def 分享项目(project_id):
@@ -687,6 +745,7 @@ def 分享项目(project_id):
 # ============================================================
 # 表单方式生成文档
 # ============================================================
+
 
 def 从表单生成文档(项目编号: str, 数据: dict):
     """
@@ -815,7 +874,9 @@ def 从表单生成文档(项目编号: str, 数据: dict):
 本软件为原创开发，未使用第三方商业代码。
 """
 
-    with open(os.path.join(项目目录, "software-copyright-form.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(项目目录, "software-copyright-form.md"), "w", encoding="utf-8"
+    ) as f:
         f.write(申请表内容)
 
     # ---- 生成用户手册 ----
@@ -1072,7 +1133,9 @@ def 从表单生成文档(项目编号: str, 数据: dict):
 3. **性能优化**：定期优化软件性能
 """
 
-    with open(os.path.join(项目目录, "design-specification.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(项目目录, "design-specification.md"), "w", encoding="utf-8"
+    ) as f:
         f.write(设计内容)
 
     # ---- 生成源代码文档 ----
@@ -1135,16 +1198,16 @@ def 从表单生成文档(项目编号: str, 数据: dict):
 # 文档格式转换工具
 # ============================================================
 
+
 def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str:
     """将markdown转换为带样式的中文HTML"""
     import markdown
     from markdown.extensions import tables, fenced_code, codehilite
-    
+
     html内容 = markdown.markdown(
-        md内容,
-        extensions=['tables', 'fenced_code', 'codehilite', 'toc']
+        md内容, extensions=["tables", "fenced_code", "codehilite", "toc"]
     )
-    
+
     return f"""<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -1155,7 +1218,8 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
   @page {{
     size: A4;
     margin: 2cm;
-    ";
+    @top-center {{
+      content: "{标题}";
       font-size: 9pt;
       color: #999;
     }}
@@ -1253,7 +1317,7 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
 </head>
 <body>
 {html内容}
-<footer style="text-align:right;padding:10px 20px;color:#999;font-size:9px;margin-top:40px;">© 2026 云南意念科技有限公司 版权所有</footer>
+
 </body>
 </html>"""
 
@@ -1264,60 +1328,83 @@ def md转pdf(md内容: str, 标题: str, 输出路径: str) -> bool:
     import subprocess
     import tempfile
     import os
-    
+
     html = md转html(md内容, 标题)
-    
+
     # 尝试方法1：weasyprint
     try:
         from weasyprint import HTML, CSS
         from weasyprint.text.fonts import FontConfiguration
+
         字体配置 = FontConfiguration()
         HTML(string=html).write_pdf(输出路径, font_config=字体配置)
         return True
     except Exception as weasy_error:
         pass
-    
+
     # 尝试方法2：pandoc
     try:
         # 保存HTML到临时文件
-        html_path = 输出路径.replace('.pdf', '.html')
-        with open(html_path, 'w', encoding='utf-8') as f:
+        html_path = 输出路径.replace(".pdf", ".html")
+        with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)
-        
+
         # 使用pandoc转换为PDF
         result = subprocess.run(
-            ['pandoc', html_path, '-o', 输出路径,
-             '--pdf-engine=xelatex', '-V', 'mainfont=SimSun',
-             '-V', 'geometry:margin=1in', '-V', 'CJKmainfont=SimSun'],
-            capture_output=True, timeout=60, check=True
+            [
+                "pandoc",
+                html_path,
+                "-o",
+                输出路径,
+                "--pdf-engine=xelatex",
+                "-V",
+                "mainfont=SimSun",
+                "-V",
+                "geometry:margin=1in",
+                "-V",
+                "CJKmainfont=SimSun",
+            ],
+            capture_output=True,
+            timeout=60,
+            check=True,
         )
-        
+
         # 清理临时HTML
         if os.path.exists(html_path):
             os.remove(html_path)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+    except (
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+    ):
         pass
-    
+
     # 尝试方法3：wkhtmltopdf
     try:
         # 保存HTML到临时文件
-        html_path = 输出路径.replace('.pdf', '.html')
-        with open(html_path, 'w', encoding='utf-8') as f:
+        html_path = 输出路径.replace(".pdf", ".html")
+        with open(html_path, "w", encoding="utf-8") as f:
             f.write(html)
-        
+
         result = subprocess.run(
-            ['wkhtmltopdf', '--enable-local-file-access', html_path, 输出路径],
-            capture_output=True, timeout=60, check=True
+            ["wkhtmltopdf", "--enable-local-file-access", html_path, 输出路径],
+            capture_output=True,
+            timeout=60,
+            check=True,
         )
-        
+
         # 清理临时HTML
         if os.path.exists(html_path):
             os.remove(html_path)
         return True
-    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+    except (
+        subprocess.CalledProcessError,
+        FileNotFoundError,
+        subprocess.TimeoutExpired,
+    ):
         pass
-    
+
     print(f"PDF生成失败: weasyprint/pandoc/wkhtmltopdf均不可用，请安装其中之一")
     return False
 
@@ -1332,56 +1419,56 @@ def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
     import re
     import markdown
     from markdown.extensions import tables, fenced_code
-    
+
     doc = Document()
     # 设置默认字体
-    样式 = doc.styles['Normal']
+    样式 = doc.styles["Normal"]
     字体属性 = 样式.font
-    字体属性.name = '宋体'
+    字体属性.name = "宋体"
     字体属性.size = Pt(12)
     # 设置中文字体
     rPr = 样式.element.get_or_add_rPr()
-    rFonts = OxmlElement('w:rFonts')
-    rFonts.set(qn('w:eastAsia'), '宋体')
+    rFonts = OxmlElement("w:rFonts")
+    rFonts.set(qn("w:eastAsia"), "宋体")
     rPr.insert(0, rFonts)
-    
+
     # 解析markdown
-    lines = md内容.split('\n')
-    
+    lines = md内容.split("\n")
+
     i = 0
     while i < len(lines):
         line = lines[i]
-        
+
         # 一级标题
-        if line.startswith('# '):
+        if line.startswith("# "):
             p = doc.add_heading(line[2:].strip(), level=1)
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         # 二级标题
-        elif line.startswith('## '):
+        elif line.startswith("## "):
             doc.add_heading(line[3:].strip(), level=2)
         # 三级标题
-        elif line.startswith('### '):
+        elif line.startswith("### "):
             doc.add_heading(line[4:].strip(), level=3)
         # 四级标题
-        elif line.startswith('#### '):
+        elif line.startswith("#### "):
             doc.add_heading(line[5:].strip(), level=4)
         # 表格
-        elif line.startswith('|'):
+        elif line.startswith("|"):
             # 收集表格行
             table_lines = []
-            while i < len(lines) and lines[i].startswith('|'):
-                if not re.match(r'^\|[\s\-\|:]+\|$', lines[i]):
+            while i < len(lines) and lines[i].startswith("|"):
+                if not re.match(r"^\|[\s\-\|:]+\|$", lines[i]):
                     table_lines.append(lines[i])
                 i += 1
             if table_lines:
                 rows_data = []
                 for tl in table_lines:
-                    cells = [c.strip() for c in tl.strip('|').split('|')]
+                    cells = [c.strip() for c in tl.strip("|").split("|")]
                     rows_data.append(cells)
                 if rows_data:
                     cols = len(rows_data[0])
                     tbl = doc.add_table(rows=len(rows_data), cols=cols)
-                    tbl.style = 'Table Grid'
+                    tbl.style = "Table Grid"
                     for ri, row_data in enumerate(rows_data):
                         for ci, cell_text in enumerate(row_data):
                             cell = tbl.rows[ri].cells[ci]
@@ -1390,92 +1477,41 @@ def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
                                 cell.paragraphs[0].runs[0].bold = True
             continue
         # 代码块
-        elif line.startswith('```'):
+        elif line.startswith("```"):
             code_lines = []
             i += 1
-            while i < len(lines) and not lines[i].startswith('```'):
+            while i < len(lines) and not lines[i].startswith("```"):
                 code_lines.append(lines[i])
                 i += 1
             if code_lines:
                 p = doc.add_paragraph()
-                run = p.add_run('\n'.join(code_lines))
-                run.font.name = 'Courier New'
+                run = p.add_run("\n".join(code_lines))
+                run.font.name = "Courier New"
                 run.font.size = Pt(9)
                 rPr = run._element.get_or_add_rPr()
-                rFonts = OxmlElement('w:rFonts')
-                rFonts.set(qn('w:eastAsia'), '宋体')
+                rFonts = OxmlElement("w:rFonts")
+                rFonts.set(qn("w:eastAsia"), "宋体")
                 rPr.insert(0, rFonts)
                 p.paragraph_format.left_indent = Cm(1)
         # 分隔线
-        elif line.strip() == '---':
-            doc.add_paragraph('─' * 40)
+        elif line.strip() == "---":
+            doc.add_paragraph("─" * 40)
         # 普通段落
         elif line.strip():
             text = line.strip()
             # 移除markdown标记
-            text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
-            text = re.sub(r'\*(.+?)\*', r'\1', text)
-            text = re.sub(r'`(.+?)`', r'\1', text)
-            text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
-            
+            text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+            text = re.sub(r"\*(.+?)\*", r"\1", text)
+            text = re.sub(r"`(.+?)`", r"\1", text)
+            text = re.sub(r"\[(.+?)\]\(.+?\)", r"\1", text)
+
             p = doc.add_paragraph(text)
             p.paragraph_format.first_line_indent = Cm(0.74)  # 2em
         # 空行
         else:
             pass
-        
+
         i += 1
-    
-    # 添加页脚（右对齐，显示页码）
-    from docx.oxml.ns import qn as ns_qn
-    section = doc.sections[0]
-    section.different_first_page_header_footer = False
-    footer = section.footer
-    footer.is_linked_to_previous = False
-    
-    # 清除现有页脚内容
-    for para in footer.paragraphs:
-        p_element = para._element
-        p_element.getparent().remove(p_element)
-    
-    # 添加页码（居中）
-    fp_page = footer.add_paragraph()
-    fp_page.alignment = WD_ALIGN_PARAGRAPH.CENTER
-    run_page = fp_page.add_run("第 ")
-    run_page.font.size = Pt(8)
-    run_page.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
-    rPr_page = run_page._element.get_or_add_rPr()
-    rFonts_page = OxmlElement('w:rFonts')
-    rFonts_page.set(ns_qn('w:eastAsia'), '宋体')
-    rPr_page.insert(0, rFonts_page)
-    
-    # 添加页码域
-    from docx.oxml import OxmlElement as InnerOxmlElement
-    fldChar1 = InnerOxmlElement('w:fldChar')
-    fldChar1.set(ns_qn('w:fldCharType'), 'begin')
-    instrText = InnerOxmlElement('w:instrText')
-    instrText.text = 'PAGE'
-    fldChar2 = InnerOxmlElement('w:fldChar')
-    fldChar2.set(ns_qn('w:fldCharType'), 'end')
-    
-    run_page._element.append(fldChar1)
-    run_page._element.append(instrText)
-    run_page._element.append(fldChar2)
-    
-    run_page2 = fp_page.add_run(" 页")
-    run_page2.font.size = Pt(8)
-    run_page2.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
-    
-    # 添加公司名称（右对齐）
-    fp_company = footer.add_paragraph()
-    fp_company.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run_company = fp_company.add_run("© 2026 云南意念科技有限公司 版权所有")
-    run_company.font.size = Pt(8)
-    run_company.font.color.rgb = RGBColor(0x99, 0x99, 0x99)
-    rPr_company = run_company._element.get_or_add_rPr()
-    rFonts_company = OxmlElement('w:rFonts')
-    rFonts_company.set(ns_qn('w:eastAsia'), '宋体')
-    rPr_company.insert(0, rFonts_company)
 
     doc.save(输出路径)
     return True
@@ -1484,34 +1520,40 @@ def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
 def 批量转换项目文档(project_id: str, 项目目录: str):
     """将项目所有markdown文档转换为pdf和docx，使用中文文件名"""
     import os
+
     结果 = {"pdf": [], "docx": []}
-    
+
     for file in os.listdir(项目目录):
-        if not file.endswith('.md'):
+        if not file.endswith(".md"):
             continue
-        
+
         md路径 = os.path.join(项目目录, file)
-        with open(md路径, 'r', encoding='utf-8') as f:
+        with open(md路径, "r", encoding="utf-8") as f:
             md内容 = f.read()
-        
+
         # 取前50字符作为标题
-        first_line = md内容.split('\n')[0] if md内容 else file
-        标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else file.replace('.md', '')
-        
+        first_line = md内容.split("\n")[0] if md内容 else file
+        标题 = (
+            first_line.lstrip("# ").strip()
+            if first_line.startswith("#")
+            else file.replace(".md", "")
+        )
+
         # 中文文件名
         中文名 = 显示名映射.get(file, file)
-        
+
         # PDF
-        pdf路径 = os.path.join(项目目录, 中文名.replace('.md', '.pdf'))
+        pdf路径 = os.path.join(项目目录, 中文名.replace(".md", ".pdf"))
         if md转pdf(md内容, 标题, pdf路径):
-            结果["pdf"].append(中文名.replace('.md', '.pdf'))
-        
+            结果["pdf"].append(中文名.replace(".md", ".pdf"))
+
         # Word
-        docx路径 = os.path.join(项目目录, 中文名.replace('.md', '.docx'))
+        docx路径 = os.path.join(项目目录, 中文名.replace(".md", ".docx"))
         if md转docx(md内容, 标题, docx路径):
-            结果["docx"].append(中文名.replace('.md', '.docx'))
-    
+            结果["docx"].append(中文名.replace(".md", ".docx"))
+
     return 结果
+
 
 if __name__ == "__main__":
     print("=" * 60)
@@ -1524,6 +1566,3 @@ if __name__ == "__main__":
     print("    - 在线编辑与导出")
     print("=" * 60)
     应用.run(debug=False, use_reloader=False, host="0.0.0.0", port=5002, threaded=False)
-
-
-

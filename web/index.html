@@ -709,8 +709,12 @@
     </div>
 
     <script>
+        // 后端API地址配置
+        const API_BASE_URL = window.location.hostname === 'localhost' ? '<INTERNAL_URL_REDACTED> : 'https://your-backend-vercel-app.vercel.app';
+        
         // 存储生成的文档内容
         let generatedDocs = {};
+        let currentProjectId = null;
 
         /**
          * 生成文档函数

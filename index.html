@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中国软件著作权申请材料生成器 - 在线演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Microsoft YaHei", "PingFang SC", sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 800px;
+            width: 100%;
+            padding: 60px 40px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+
+        .features {
+            text-align: left;
+            margin: 40px 0;
+            padding: 0 20px;
+        }
+
+        .features h2 {
+            color: #667eea;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+            padding-left: 12px;
+        }
+
+        .features ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .features li {
+            padding: 12px 0;
+            font-size: 1.1rem;
+            color: #555;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .features li:before {
+            content: "✅ ";
+            margin-right: 8px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #e0e0e0;
+        }
+
+        .demo-info {
+            background: #f9f9f9;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 30px 0;
+            text-align: left;
+            border-radius: 4px;
+        }
+
+        .demo-info h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+
+        .demo-info p {
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #999;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 40px 20px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📄 中国软件著作权申请材料生成器</h1>
+        <p class="subtitle">自动生成符合中国版权保护中心要求的软件著作权申请材料</p>
+
+        <div class="features">
+            <h2>主要功能</h2>
+            <ul>
+                <li>自动生成软件著作权登记申请表</li>
+                <li>自动生成源代码文档（前后各30页）</li>
+                <li>自动生成用户手册</li>
+                <li>自动生成设计说明书</li>
+                <li>支持导出 Word、PDF、 Markdown 格式</li>
+                <li>支持在线编辑和实时预览</li>
+                <li>符合2026年最新政策要求</li>
+            </ul>
+        </div>
+
+        <div class="demo-info">
+            <h3>💡 如何使用</h3>
+            <p>1. 克隆项目到本地<br>
+                <code>git clone https://github.com/13888285815/qoder-chinese-copyright-application-skill.git</code></p>
+            <p>2. 安装依赖<br>
+                <code>cd qoder-chinese-copyright-application-skill/web && pip install -r requirements.txt</code></p>
+            <p>3. 启动服务<br>
+                <code>python3 app.py</code></p>
+            <p>4. 访问 <code><INTERNAL_HOST_REDACTED></p>
+        </div>
+
+        <div class="buttons">
+            <a href="https://github.com/13888285815/qoder-chinese-copyright-application-skill" class="btn btn-primary" target="_blank">查看 GitHub 仓库</a>
+            <a href="https://github.com/13888285815/qoder-chinese-copyright-application-skill#readme" class="btn btn-secondary" target="_blank">查看文档</a>
+        </div>
+
+        <div class="footer">
+            <p>版本：2.0.0 | 最后更新：2026-05-17</p>
+        </div>
+    </div>
+</body>
+</html>
