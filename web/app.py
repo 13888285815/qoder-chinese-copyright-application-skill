@@ -8,6 +8,7 @@ import sys
 import json
 import uuid
 import zipfile
+import urllib.parse
 import tempfile
 import shutil
 from datetime import datetime
@@ -472,10 +473,7 @@ def 下载文件(filename):
 
 @应用.route("/api/projects/<project_id>/export-pdf", methods=["POST"])
 def 导出PDF(project_id):
-    """
-    将文档转换为PDF格式
-    尝试使用系统安装的转换工具（pandoc 或 wkhtmltopdf）
-    """
+    """将单个markdown文档转换为PDF（weasyprint自动渲染中文）"""
     项目目录 = 获取项目目录(project_id)
     if not os.path.exists(项目目录):
         return jsonify({"success": False, "message": "项目不存在"}), 404
@@ -488,58 +486,123 @@ def 导出PDF(project_id):
 
     实际文件名 = 内部名映射.get(目标文件, 目标文件)
     md路径 = os.path.join(项目目录, 实际文件名)
-
     if not os.path.exists(md路径):
         md路径 = os.path.join(项目目录, 目标文件)
-
     if not os.path.exists(md路径):
         return jsonify({"success": False, "message": "文档不存在"}), 404
 
-    # 尝试使用 pandoc 转换
-    import subprocess
+    with open(md路径, 'r', encoding='utf-8') as f:
+        md内容 = f.read()
+
+    first_line = md内容.split('\n')[0]
+    标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else 目标文件.replace('.md', '')
     pdf路径 = md路径.replace(".md", ".pdf")
 
-    try:
-        命令 = [
-            "pandoc", md路径,
-            "-o", pdf路径,
-            "--pdf-engine=xelatex",
-            "-V", "mainfont=SimSun",
-            "-V", "geometry:margin=1in",
-            "-V", "CJKmainfont=SimSun",
-        ]
-        subprocess.run(命令, check=True, capture_output=True, timeout=60)
-
+    if md转pdf(md内容, 标题, pdf路径):
         下载名 = 目标文件.replace(".md", ".pdf")
         return jsonify({
             "success": True,
             "message": "PDF生成成功",
-            "pdf_url": f"/api/download-pdf/{project_id}/{下载名}",
+            "pdf_url": f"/api/download-pdf/{project_id}/{urllib.parse.quote(下载名)}",
         })
-    except FileNotFoundError:
+    else:
+        return jsonify({"success": False, "message": "PDF生成失败，请检查文档内容"})
+
+
+@应用.route("/api/projects/<project_id>/export-docx", methods=["POST"])
+def 导出DOCX(project_id):
+    """将单个markdown文档转换为Word文档"""
+    项目目录 = 获取项目目录(project_id)
+    if not os.path.exists(项目目录):
+        return jsonify({"success": False, "message": "项目不存在"}), 404
+
+    数据 = request.json or {}
+    目标文件 = 数据.get("filename", "")
+
+    if not 目标文件:
+        return jsonify({"success": False, "message": "请指定要转换的文档"}), 400
+
+    实际文件名 = 内部名映射.get(目标文件, 目标文件)
+    md路径 = os.path.join(项目目录, 实际文件名)
+    if not os.path.exists(md路径):
+        md路径 = os.path.join(项目目录, 目标文件)
+    if not os.path.exists(md路径):
+        return jsonify({"success": False, "message": "文档不存在"}), 404
+
+    with open(md路径, 'r', encoding='utf-8') as f:
+        md内容 = f.read()
+
+    first_line = md内容.split('\n')[0]
+    标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else 目标文件.replace('.md', '')
+    docx路径 = md路径.replace(".md", ".docx")
+
+    if md转docx(md内容, 标题, docx路径):
+        下载名 = 目标文件.replace(".md", ".docx")
         return jsonify({
-            "success": False,
-            "message": "未安装pandoc，无法生成PDF。请安装pandoc和xelatex后重试。",
+            "success": True,
+            "message": "Word文档生成成功",
+            "docx_url": f"/api/download-docx/{project_id}/{urllib.parse.quote(下载名)}",
         })
-    except subprocess.CalledProcessError as e:
-        return jsonify({
-            "success": False,
-            "message": f"PDF生成失败：{e.stderr.decode('utf-8', errors='ignore')[:200] if e.stderr else '未知错误'}",
-        })
-    except Exception as e:
-        return jsonify({"success": False, "message": f"PDF生成异常：{str(e)}"})
+    else:
+        return jsonify({"success": False, "message": "Word文档生成失败"})
+
+
+@应用.route("/api/projects/<project_id>/export-all", methods=["POST"])
+def 导出全部格式(project_id):
+    """将项目所有文档批量转换为PDF和Word"""
+    项目目录 = 获取项目目录(project_id)
+    if not os.path.exists(项目目录):
+        return jsonify({"success": False, "message": "项目不存在"}), 404
+
+    数据 = request.json or {}
+    formats = 数据.get("formats", ["pdf", "docx"])
+
+    转换结果 = 批量转换项目文档(project_id, 项目目录)
+
+    import time
+    zip名 = f"copyright-all-{project_id[:8]}-{int(time.time())}.zip"
+    zip路径 = os.path.join(应用.config["GENERATED_FOLDER"], zip名)
+
+    with zipfile.ZipFile(zip路径, "w", zipfile.ZIP_DEFLATED) as zf:
+        for file in os.listdir(项目目录):
+            ext = os.path.splitext(file)[1]
+            允许格式 = []
+            if "pdf" in formats:
+                允许格式.append(".pdf")
+            if "docx" in formats:
+                允许格式.append(".docx")
+            if ext in 允许格式:
+                file_path = os.path.join(项目目录, file)
+                中文名 = 显示名映射.get(file, file)
+                zf.write(file_path, 中文名)
+
+    return jsonify({
+        "success": True,
+        "message": "批量转换完成",
+        "download_url": f"/api/download/{zip名}",
+        "download_name": f"软件著作权申请材料-全格式.zip",
+        "converted": 转换结果,
+    })
 
 
 @应用.route("/api/download-pdf/<project_id>/<filename>", methods=["GET"])
 def 下载PDF(project_id, filename):
-    """下载生成的PDF文件"""
     实际文件名 = filename.replace(".pdf", ".md")
     pdf路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(".md", ".pdf")
-
     if not os.path.exists(pdf路径):
         return jsonify({"success": False, "message": "PDF文件不存在"}), 404
-
     return send_file(pdf路径, as_attachment=True, download_name=filename)
+
+
+@应用.route("/api/download-docx/<project_id>/<filename>", methods=["GET"])
+def 下载DOCX(project_id, filename):
+    实际文件名 = filename.replace(".docx", ".md")
+    docx路径 = os.path.join(获取项目目录(project_id), 实际文件名).replace(".md", ".docx")
+    if not os.path.exists(docx路径):
+        return jsonify({"success": False, "message": "Word文件不存在"}), 404
+    return send_file(docx路径, as_attachment=True, download_name=filename)
+
+
 
 
 # ============================================================
@@ -1014,4 +1077,284 @@ if __name__ == "__main__":
     print("    - 上传源码自动分析")
     print("    - 在线编辑与导出")
     print("=" * 60)
-    应用.run(debug=True, host="0.0.0.0", port=5002, threaded=True)
+    应用.run(debug=False, use_reloader=False, host="0.0.0.0", port=5002, threaded=True)
+
+
+# ============================================================
+# 文档格式转换工具
+# ============================================================
+
+def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str:
+    """将markdown转换为带样式的中文HTML"""
+    import markdown
+    from markdown.extensions import tables, fenced_code, codehilite
+    
+    html内容 = markdown.markdown(
+        md内容,
+        extensions=['tables', 'fenced_code', 'codehilite', 'toc']
+    )
+    
+    return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{标题}</title>
+<style>
+  @page {{
+    size: A4;
+    margin: 2cm;
+    @top-center {{
+      content: "{标题}";
+      font-size: 9pt;
+      color: #999;
+    }}
+    @bottom-center {{
+      content: "第 " counter(page) " 页";
+      font-size: 9pt;
+      color: #999;
+    }}
+  }}
+  body {{
+    font-family: "Source Han Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", "SimHei", sans-serif;
+    font-size: 12pt;
+    line-height: 1.8;
+    color: #333;
+    max-width: 100%;
+    margin: 0;
+    padding: 0;
+  }}
+  h1 {{
+    font-size: 20pt;
+    text-align: center;
+    color: #1a1a1a;
+    border-bottom: 2px solid #1a1a1a;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+    page-break-after: avoid;
+  }}
+  h2 {{
+    font-size: 16pt;
+    color: #333;
+    border-left: 4px solid #1a1a1a;
+    padding-left: 12px;
+    margin-top: 24px;
+    page-break-after: avoid;
+  }}
+  h3 {{
+    font-size: 13pt;
+    color: #555;
+    margin-top: 18px;
+  }}
+  p {{
+    text-indent: 2em;
+    margin: 10px 0;
+  }}
+  table {{
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 11pt;
+  }}
+  th, td {{
+    border: 1px solid #ccc;
+    padding: 8px 12px;
+    text-align: left;
+  }}
+  th {{
+    background: #f5f5f5;
+    font-weight: bold;
+    text-align: center;
+  }}
+  code {{
+    background: #f5f5f5;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Menlo", monospace;
+    font-size: 10pt;
+  }}
+  pre {{
+    background: #f5f5f5;
+    padding: 12px;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }}
+  hr {{
+    border: none;
+    border-top: 1px solid #ddd;
+    margin: 20px 0;
+  }}
+  strong {{
+    color: #1a1a1a;
+  }}
+  ul, ol {{
+    margin: 10px 0 10px 2em;
+  }}
+  li {{
+    margin: 4px 0;
+  }}
+  .copyright-header {{
+    text-align: center;
+    margin-bottom: 30px;
+  }}
+</style>
+</head>
+<body>
+{html内容}
+</body>
+</html>"""
+
+
+def md转pdf(md内容: str, 标题: str, 输出路径: str) -> bool:
+    """将markdown转换为PDF"""
+    import markdown
+    html = md转html(md内容, 标题)
+    try:
+        from weasyprint import HTML, CSS
+        from weasyprint.text.fonts import FontConfiguration
+        字体配置 = FontConfiguration()
+        HTML(string=html).write_pdf(输出路径, font_config=字体配置)
+        return True
+    except Exception as e:
+        print(f"PDF生成失败: {e}")
+        return False
+
+
+def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
+    """将markdown转换为Word文档"""
+    from docx import Document
+    from docx.shared import Pt, RGBColor, Inches, Cm
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+    import re
+    import markdown
+    from markdown.extensions import tables, fenced_code
+    
+    doc = Document()
+    # 设置默认字体
+    样式 = doc.styles['Normal']
+    字体属性 = 样式.font
+    字体属性.name = '宋体'
+    字体属性.size = Pt(12)
+    # 设置中文字体
+    rPr = 样式.element.get_or_add_rPr()
+    rFonts = OxmlElement('w:rFonts')
+    rFonts.set(qn('w:eastAsia'), '宋体')
+    rPr.insert(0, rFonts)
+    
+    # 解析markdown
+    lines = md内容.split('\n')
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        # 一级标题
+        if line.startswith('# '):
+            p = doc.add_heading(line[2:].strip(), level=1)
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        # 二级标题
+        elif line.startswith('## '):
+            doc.add_heading(line[3:].strip(), level=2)
+        # 三级标题
+        elif line.startswith('### '):
+            doc.add_heading(line[4:].strip(), level=3)
+        # 四级标题
+        elif line.startswith('#### '):
+            doc.add_heading(line[5:].strip(), level=4)
+        # 表格
+        elif line.startswith('|'):
+            # 收集表格行
+            table_lines = []
+            while i < len(lines) and lines[i].startswith('|'):
+                if not re.match(r'^\|[\s\-\|:]+\|$', lines[i]):
+                    table_lines.append(lines[i])
+                i += 1
+            if table_lines:
+                rows_data = []
+                for tl in table_lines:
+                    cells = [c.strip() for c in tl.strip('|').split('|')]
+                    rows_data.append(cells)
+                if rows_data:
+                    cols = len(rows_data[0])
+                    tbl = doc.add_table(rows=len(rows_data), cols=cols)
+                    tbl.style = 'Table Grid'
+                    for ri, row_data in enumerate(rows_data):
+                        for ci, cell_text in enumerate(row_data):
+                            cell = tbl.rows[ri].cells[ci]
+                            cell.text = cell_text
+                            if ri == 0:
+                                cell.paragraphs[0].runs[0].bold = True
+            continue
+        # 代码块
+        elif line.startswith('```'):
+            code_lines = []
+            i += 1
+            while i < len(lines) and not lines[i].startswith('```'):
+                code_lines.append(lines[i])
+                i += 1
+            if code_lines:
+                p = doc.add_paragraph()
+                run = p.add_run('\n'.join(code_lines))
+                run.font.name = 'Courier New'
+                run.font.size = Pt(9)
+                rPr = run._element.get_or_add_rPr()
+                rFonts = OxmlElement('w:rFonts')
+                rFonts.set(qn('w:eastAsia'), '宋体')
+                rPr.insert(0, rFonts)
+                p.paragraph_format.left_indent = Cm(1)
+        # 分隔线
+        elif line.strip() == '---':
+            doc.add_paragraph('─' * 40)
+        # 普通段落
+        elif line.strip():
+            text = line.strip()
+            # 移除markdown标记
+            text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+            text = re.sub(r'\*(.+?)\*', r'\1', text)
+            text = re.sub(r'`(.+?)`', r'\1', text)
+            text = re.sub(r'\[(.+?)\]\(.+?\)', r'\1', text)
+            
+            p = doc.add_paragraph(text)
+            p.paragraph_format.first_line_indent = Cm(0.74)  # 2em
+        # 空行
+        else:
+            pass
+        
+        i += 1
+    
+    doc.save(输出路径)
+    return True
+
+
+def 批量转换项目文档(project_id: str, 项目目录: str):
+    """将项目所有markdown文档转换为pdf和docx"""
+    import os
+    结果 = {"pdf": [], "docx": []}
+    
+    for file in os.listdir(项目目录):
+        if not file.endswith('.md'):
+            continue
+        
+        md路径 = os.path.join(项目目录, file)
+        with open(md路径, 'r', encoding='utf-8') as f:
+            md内容 = f.read()
+        
+        # 取前50字符作为标题
+        first_line = md内容.split('\n')[0] if md内容 else file
+        标题 = first_line.lstrip('# ').strip() if first_line.startswith('#') else file.replace('.md', '')
+        
+        # PDF
+        pdf路径 = md路径.replace('.md', '.pdf')
+        if md转pdf(md内容, 标题, pdf路径):
+            结果["pdf"].append(os.path.basename(pdf路径))
+        
+        # Word
+        docx路径 = md路径.replace('.md', '.docx')
+        if md转docx(md内容, 标题, docx路径):
+            结果["docx"].append(os.path.basename(docx路径))
+    
+    return 结果

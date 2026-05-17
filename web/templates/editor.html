@@ -615,26 +615,36 @@
                 <button class="modal-close" onclick="closeExportModal()">×</button>
             </div>
             <p style="color: #666; margin-bottom: 20px;">选择导出格式：</p>
-            <div class="export-options">
+            <div class="export-options" style="grid-template-columns: repeat(3, 1fr);">
                 <div class="export-option selected" onclick="selectExportFormat('zip')">
                     <div class="export-icon">📦</div>
                     <div>ZIP压缩包</div>
-                    <small>所有文档打包下载</small>
+                    <small>所有文档打包</small>
                 </div>
                 <div class="export-option" onclick="selectExportFormat('pdf')">
                     <div class="export-icon">📄</div>
                     <div>PDF文档</div>
-                    <small>适合打印和提交</small>
+                    <small>当前文档转PDF</small>
                 </div>
-                <div class="export-option" onclick="selectExportFormat('markdown')">
-                    <div class="export-icon">📝</div>
-                    <div>Markdown</div>
-                    <small>单个文档下载</small>
+                <div class="export-option" onclick="selectExportFormat('docx')">
+                    <div class="export-icon">📘</div>
+                    <div>Word文档</div>
+                    <small>当前文档转Word</small>
                 </div>
                 <div class="export-option" onclick="selectExportFormat('all-md')">
                     <div class="export-icon">📚</div>
                     <div>全部Markdown</div>
                     <small>下载所有文档</small>
+                </div>
+                <div class="export-option" onclick="selectExportFormat('all-pdf-docx')">
+                    <div class="export-icon">📦</div>
+                    <div>PDF+Word全格式</div>
+                    <small>所有文档转PDF+Word</small>
+                </div>
+                <div class="export-option" onclick="selectExportFormat('markdown')">
+                    <div class="export-icon">📝</div>
+                    <div>Markdown</div>
+                    <small>单个文档下载</small>
                 </div>
             </div>
             <button class="btn btn-primary" style="width: 100%; margin-top: 20px;" onclick="exportDocuments()">
@@ -1008,14 +1018,10 @@ ${markdownToHtml(content)}
                 if (exportFormat === 'zip' || exportFormat === 'all-md') {
                     const response = await fetch(`/api/projects/${projectId}/export`, {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ format: 'zip' })
                     });
-
                     const result = await response.json();
-                    
                     if (result.success) {
                         window.location.href = result.download_url;
                         closeExportModal();
@@ -1023,12 +1029,47 @@ ${markdownToHtml(content)}
                     } else {
                         showToast('导出失败：' + result.message, 'error');
                     }
-                } else if (exportFormat === 'markdown' || exportFormat === 'pdf') {
+                } else if (exportFormat === 'pdf' || exportFormat === 'docx') {
                     if (!currentDocument) {
                         showToast('请先打开一个文档', 'error');
                         return;
                     }
-
+                    const endpoint = exportFormat === 'pdf' ? 'export-pdf' : 'export-docx';
+                    const response = await fetch(`/api/projects/${projectId}/${endpoint}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ filename: currentDocument })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        const url = result.pdf_url || result.docx_url;
+                        window.location.href = url;
+                        closeExportModal();
+                        showToast((exportFormat === 'pdf' ? 'PDF' : 'Word') + '导出成功！', 'success');
+                    } else {
+                        showToast('导出失败：' + result.message, 'error');
+                    }
+                } else if (exportFormat === 'all-pdf-docx') {
+                    showToast('正在批量生成PDF和Word，请稍候...', 'info');
+                    const response = await fetch(`/api/projects/${projectId}/export-all`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ formats: ['pdf', 'docx'] })
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        window.location.href = result.download_url;
+                        closeExportModal();
+                        const cnt = (result.converted.pdf || []).length + (result.converted.docx || []).length;
+                        showToast(`批量导出成功！已生成${cnt}个文件`, 'success');
+                    } else {
+                        showToast('导出失败：' + result.message, 'error');
+                    }
+                } else if (exportFormat === 'markdown') {
+                    if (!currentDocument) {
+                        showToast('请先打开一个文档', 'error');
+                        return;
+                    }
                     const content = document.getElementById('editorTextarea').value;
                     const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
                     const url = URL.createObjectURL(blob);
@@ -1039,7 +1080,6 @@ ${markdownToHtml(content)}
                     a.click();
                     document.body.removeChild(a);
                     URL.revokeObjectURL(url);
-
                     closeExportModal();
                     showToast('文档已导出', 'success');
                 }
