@@ -365,6 +365,14 @@
                         <label for="phone">联系电话</label>
                         <input type="tel" id="phone" placeholder="联系电话">
                     </div>
+                    <div class="form-group">
+                        <label for="zipCode">邮政编码</label>
+                        <input type="text" id="zipCode" placeholder="邮政编码" value="650000">
+                    </div>
+                    <div class="form-group">
+                        <label for="email">电子邮箱</label>
+                        <input type="email" id="email" placeholder="电子邮箱" value="zzx@yndxw.com">
+                    </div>
                 </div>
             </div>
 
@@ -471,6 +479,9 @@
                     address: document.getElementById('address').value,
                     contact: document.getElementById('contact').value,
                     phone: document.getElementById('phone').value,
+                    postal_code: document.getElementById('zipCode').value,
+                    zip_code: document.getElementById('zipCode').value,
+                    email: document.getElementById('email').value,
                     software_type: document.getElementById('softwareType').value,
                     industry: document.getElementById('industry').value,
                     code_lines: document.getElementById('codeLines').value || '15000',
@@ -529,6 +540,8 @@
                 document.getElementById('address').value = t.address || '';
                 document.getElementById('contact').value = t.contact || '';
                 document.getElementById('phone').value = t.phone || '';
+                document.getElementById('zipCode').value = t.zip_code || t.postal_code || '650000';
+                document.getElementById('email').value = t.email || 'zzx@yndxw.com';
                 document.getElementById('industry').value = t.industry || '';
                 document.getElementById('devPurpose').value = t.dev_purpose || '';
                 document.getElementById('mainFunctions').value = t.main_functions || '';

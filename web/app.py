@@ -179,6 +179,8 @@ def 获取模板():
             "address": "云南省昆明市人民西路220号云南软件园",
             "contact": "郑志雄",
             "phone": "13888285815",
+            "postal_code": "650000",
+            "email": "zzx@yndxw.com",
             "software_type": "Web应用",
             "industry": "全行业",
             "version": "V2.0.0",
