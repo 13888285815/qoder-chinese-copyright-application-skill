@@ -506,7 +506,7 @@ def 导出PDF(project_id):
             "pdf_url": f"/api/download-pdf/{project_id}/{urllib.parse.quote(下载名)}",
         })
     else:
-        return jsonify({"success": False, "message": "PDF生成失败，请检查文档内容"})
+        return jsonify({"success": False, "message": "PDF生成失败：未安装PDF转换工具。请安装weasyprint（需GTK库）或pandoc/wkhtmltopdf后重试。"})
 
 
 @应用.route("/api/projects/<project_id>/export-docx", methods=["POST"])
@@ -1208,18 +1208,67 @@ def md转html(md内容: str, 标题: str = "软件著作权申请材料") -> str
 
 
 def md转pdf(md内容: str, 标题: str, 输出路径: str) -> bool:
-    """将markdown转换为PDF"""
+    """将markdown转换为PDF，支持多种后端"""
     import markdown
+    import subprocess
+    import tempfile
+    import os
+    
     html = md转html(md内容, 标题)
+    
+    # 尝试方法1：weasyprint
     try:
         from weasyprint import HTML, CSS
         from weasyprint.text.fonts import FontConfiguration
         字体配置 = FontConfiguration()
         HTML(string=html).write_pdf(输出路径, font_config=字体配置)
         return True
-    except Exception as e:
-        print(f"PDF生成失败: {e}")
-        return False
+    except Exception as weasy_error:
+        pass
+    
+    # 尝试方法2：pandoc
+    try:
+        # 保存HTML到临时文件
+        html_path = 输出路径.replace('.pdf', '.html')
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        
+        # 使用pandoc转换为PDF
+        result = subprocess.run(
+            ['pandoc', html_path, '-o', 输出路径,
+             '--pdf-engine=xelatex', '-V', 'mainfont=SimSun',
+             '-V', 'geometry:margin=1in', '-V', 'CJKmainfont=SimSun'],
+            capture_output=True, timeout=60, check=True
+        )
+        
+        # 清理临时HTML
+        if os.path.exists(html_path):
+            os.remove(html_path)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    
+    # 尝试方法3：wkhtmltopdf
+    try:
+        # 保存HTML到临时文件
+        html_path = 输出路径.replace('.pdf', '.html')
+        with open(html_path, 'w', encoding='utf-8') as f:
+            f.write(html)
+        
+        result = subprocess.run(
+            ['wkhtmltopdf', '--enable-local-file-access', html_path, 输出路径],
+            capture_output=True, timeout=60, check=True
+        )
+        
+        # 清理临时HTML
+        if os.path.exists(html_path):
+            os.remove(html_path)
+        return True
+    except (subprocess.CalledProcessError, FileNotFoundError, subprocess.TimeoutExpired):
+        pass
+    
+    print(f"PDF生成失败: weasyprint/pandoc/wkhtmltopdf均不可用，请安装其中之一")
+    return False
 
 
 def md转docx(md内容: str, 标题: str, 输出路径: str) -> bool:
